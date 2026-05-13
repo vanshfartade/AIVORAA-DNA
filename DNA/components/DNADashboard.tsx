@@ -1,30 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useDNACanvas } from '../hooks/useDNACanvas';
+import { useDNAData } from '../hooks/useDNAData';
 import { TopUI } from './TopUI';
 import { LevelsPanel } from './LevelsPanel';
-import type { HelixNode, OriginNodeData, GoalNodeData, RungData } from '../types/dna';
-
-// Temporary mock import to simulate backend AI payload
-import { originNodes as mockOrigin, goalNodes as mockGoal, rungs as mockRungs } from '../mocks/dnaData';
+import type { HelixNode } from '../types/dna';
 
 export const DNADashboard: React.FC = () => {
   const [isZoomed, setIsZoomed] = useState(false);
   const [activeNode, setActiveNode] = useState<HelixNode | null>(null);
 
-  // Centralized state to be populated by the AI agent (Ciro)
-  const [originData, setOriginData] = useState<OriginNodeData[]>([]);
-  const [goalData, setGoalData] = useState<GoalNodeData[]>([]);
-  const [rungData, setRungData] = useState<RungData[]>([]);
-
-  // Simulate AI Agent streaming data after 3 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setOriginData(mockOrigin);
-      setGoalData(mockGoal);
-      setRungData(mockRungs);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, []);
+  // Fetch DNA data from backend API
+  const { originData, goalData, rungData, isLoading, error, refetch } = useDNAData();
 
   const handleNodeClick = (node: HelixNode): void => {
     setActiveNode(node);
@@ -44,6 +30,7 @@ export const DNADashboard: React.FC = () => {
     goalData,
     rungData,
   });
+
 
   return (
     <div className="w-screen h-screen bg-[#050b08] text-white font-sans overflow-hidden relative">
@@ -131,6 +118,38 @@ export const DNADashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-10 h-10 border-2 border-[rgba(0,255,120,0.3)] border-t-[#00ff78] rounded-full animate-spin" />
+            <span className="text-[11px] tracking-[2px] text-[rgba(0,255,120,0.7)] uppercase font-semibold">
+              Syncing DNA...
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Error Overlay */}
+      {error && !isLoading && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center">
+          <div className="bg-[rgba(2,10,5,0.85)] backdrop-blur-2xl border border-[rgba(255,80,80,0.3)] rounded-2xl p-8 max-w-sm text-center shadow-[0_15px_35px_rgba(0,0,0,0.6)]">
+            <div className="text-[rgba(255,80,80,0.9)] text-sm mb-3 font-medium">
+              Failed to load curriculum data
+            </div>
+            <div className="text-[rgba(255,255,255,0.5)] text-xs mb-5 leading-relaxed">
+              {error}
+            </div>
+            <button
+              onClick={refetch}
+              className="px-5 py-2 bg-[rgba(0,255,120,0.15)] border border-[rgba(0,255,120,0.4)] text-[#00ff78] rounded-lg text-xs uppercase tracking-[1px] transition-all duration-200 hover:bg-[rgba(0,255,120,0.25)] hover:shadow-[0_0_15px_rgba(0,255,120,0.2)]"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

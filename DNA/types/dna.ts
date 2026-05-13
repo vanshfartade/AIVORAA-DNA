@@ -108,3 +108,29 @@ export interface CanvasAnimationState {
   activeNode: HelixNode | null;
   isZoomed: boolean;
 }
+
+// ── API Response Types ──────────────────────────
+// Mirror the backend response shapes for type-safe fetching.
+
+export interface DNADashboardApiResponse {
+  id: string;
+  userId: string;
+  originNodes: OriginNodeData[];
+  goalNodes: GoalNodeData[];
+  rungNodes: RungData[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiSuccessResponse<T> {
+  success: true;
+  data: T;
+  message: string;
+}
+
+export interface ApiErrorResponse {
+  success: false;
+  message: string;
+}
+
+export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
