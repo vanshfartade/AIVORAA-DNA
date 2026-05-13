@@ -1,6 +1,3 @@
-// @ts-nocheck
-import React from 'react';
-
 interface TopUIProps {
   isZoomed: boolean;
   onZoomOut: () => void;

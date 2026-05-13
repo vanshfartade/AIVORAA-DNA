@@ -1,6 +1,5 @@
-// @ts-nocheck
-import React, { useState, useEffect } from 'react';
-import { HelixNode } from '../types/dna';
+import { useState, useEffect } from 'react';
+import type { HelixNode, ProgressStatus } from '../types/dna';
 
 interface LevelsPanelProps {
   activeNode: HelixNode | null;
@@ -18,19 +17,19 @@ export const LevelsPanel: React.FC<LevelsPanelProps> = ({ activeNode, isOpen }) 
 
   if (!activeNode) return null;
 
-  const getTag = () => {
+  const getTag = (): string => {
     if (activeNode.type === 'origin') return 'Skills';
     if (activeNode.type === 'goal') return 'Course';
     return 'Course Skills';
   };
 
-  const getTitle = () => activeNode.data.label;
+  const getTitle = (): string => activeNode.data.label;
 
-  const renderList = () => {
+  const renderList = (): React.ReactNode => {
     if (activeNode.type === 'origin') {
       return activeNode.data.skills.map((item, idx) => (
         <AccordionItem
-          key={idx}
+          key={item.id}
           index={idx}
           title={item.title}
           desc={item.desc}
@@ -57,7 +56,7 @@ export const LevelsPanel: React.FC<LevelsPanelProps> = ({ activeNode, isOpen }) 
     } else {
       return activeNode.data.projects.map((item, idx) => (
         <AccordionItem
-          key={idx}
+          key={item.id}
           index={idx}
           title={item.title}
           desc={item.desc}
@@ -102,7 +101,7 @@ interface AccordionItemProps {
   index: number;
   title: string;
   desc: string;
-  status: 'locked' | 'in-progress' | 'completed';
+  status: ProgressStatus;
   progress: number;
   isExpanded: boolean;
   onToggle: () => void;
@@ -110,13 +109,13 @@ interface AccordionItemProps {
 }
 
 const AccordionItem: React.FC<AccordionItemProps> = ({ index, title, desc, status, progress, isExpanded, onToggle, progressMessage }) => {
-  const getStatusColor = () => {
+  const getStatusColor = (): string => {
     if (status === 'completed') return 'rgba(0, 255, 120, 1)';
     if (status === 'locked') return 'rgba(100, 100, 100, 0.5)';
     return 'rgba(0, 200, 255, 1)'; // in-progress
   };
 
-  const getStatusIcon = () => {
+  const getStatusIcon = (): string | number => {
     if (status === 'completed') return '✓';
     if (status === 'locked') return '🔒';
     return index + 1;

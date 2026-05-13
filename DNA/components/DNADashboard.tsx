@@ -1,9 +1,8 @@
-// @ts-nocheck
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useDNACanvas } from '../hooks/useDNACanvas';
 import { TopUI } from './TopUI';
 import { LevelsPanel } from './LevelsPanel';
-import { HelixNode, OriginNodeData, GoalNodeData, RungData } from '../types/dna';
+import type { HelixNode, OriginNodeData, GoalNodeData, RungData } from '../types/dna';
 
 // Temporary mock import to simulate backend AI payload
 import { originNodes as mockOrigin, goalNodes as mockGoal, rungs as mockRungs } from '../mocks/dnaData';
@@ -27,12 +26,12 @@ export const DNADashboard: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleNodeClick = (node: HelixNode) => {
+  const handleNodeClick = (node: HelixNode): void => {
     setActiveNode(node);
     setIsZoomed(true);
   };
 
-  const handleZoomOut = () => {
+  const handleZoomOut = (): void => {
     setIsZoomed(false);
     setActiveNode(null);
   };
@@ -98,7 +97,7 @@ export const DNADashboard: React.FC = () => {
               <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-[rgba(255,255,255,0.05)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
               <h2 className="relative z-10 text-lg font-semibold text-white mb-2 flex items-center gap-2 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#00ff78] shadow-[0_0_10px_#00ff78]"></span>
-                The Strands: Skills & Goals
+                The Strands: Skills &amp; Goals
               </h2>
               <p className="relative z-10">
                 The two twisting strands of the helix represent the core foundation of your educational journey. One strand embodies your <strong>Foundational Skills</strong> (like Web Dev or Python), while the opposing strand represents your ultimate <strong>Career Goals</strong> (like becoming a Full Stack Developer or AI Engineer).

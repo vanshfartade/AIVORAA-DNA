@@ -1,11 +1,15 @@
-// @ts-nocheck
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import DNADashboard from './components/DNADashboard'
-import './styles/global.css'
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import DNADashboard from './components/DNADashboard';
+import './styles/global.css';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error('Root element not found');
+}
+
+createRoot(rootElement).render(
+  <StrictMode>
     <DNADashboard />
-  </React.StrictMode>,
-)
+  </StrictMode>,
+);

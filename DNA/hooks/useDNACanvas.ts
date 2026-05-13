@@ -1,6 +1,5 @@
-// @ts-nocheck
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { HelixNode, Particle, OriginNodeData, GoalNodeData, RungData } from '../types/dna';
+import { useEffect, useRef, useState } from 'react';
+import type { HelixNode, OriginNodeData, GoalNodeData, RungData, ParticleShape, DrawCommand, CanvasAnimationState } from '../types/dna';
 
 interface UseDNACanvasProps {
   onNodeClick: (node: HelixNode) => void;
@@ -11,27 +10,27 @@ interface UseDNACanvasProps {
   rungData?: RungData[];
 }
 
-export const useDNACanvas = ({ onNodeClick, isZoomed, activeNode, originData = [], goalData = [], rungData = [] }: UseDNACanvasProps) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const wrapRef = useRef<HTMLDivElement | null>(null);
+export const useDNACanvas = ({ onNodeClick, isZoomed, activeNode, originData = [], goalData = [], rungData = [] }: UseDNACanvasProps): { wrapRef: React.RefObject<HTMLDivElement>; canvasRef: React.RefObject<HTMLCanvasElement>; hoveredNode: HelixNode | null } => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   // State
   const [hoveredNode, setHoveredNode] = useState<HelixNode | null>(null);
 
   // Mutable values for animation loop to avoid dependency triggers
-  const state = useRef({
+  const state = useRef<CanvasAnimationState>({
     W: 0, H: 0, dpr: 1,
     scrollY: 0, targetScrollY: 0,
     rotationY: 0,
-    mouseX: null as number | null, mouseY: null as number | null,
-    worldMouseX: null as number | null, worldMouseY: null as number | null,
+    mouseX: null, mouseY: null,
+    worldMouseX: null, worldMouseY: null,
     animT: 0,
     camX: 0, camY: 0, camScale: 1,
     targetCamX: 0, targetCamY: 0, targetCamScale: 1,
-    particles: [] as Particle[],
-    nodes: [] as HelixNode[],
-    hoveredNode: null as HelixNode | null,
-    activeNode: null as HelixNode | null,
+    particles: [],
+    nodes: [],
+    hoveredNode: null,
+    activeNode: null,
     isZoomed: false
   });
 
@@ -57,7 +56,7 @@ export const useDNACanvas = ({ onNodeClick, isZoomed, activeNode, originData = [
     const s = state.current;
     
     // Initialize particles
-    const types: ('hex' | 'orb' | 'cross' | 'ring' | 'triangle')[] = ['hex', 'orb', 'cross', 'ring', 'triangle'];
+    const types: ParticleShape[] = ['hex', 'orb', 'cross', 'ring', 'triangle'];
     const colors = ['0, 255, 120', '0, 200, 255', '255, 100, 200', '255, 180, 50', '100, 255, 100'];
     s.particles = Array.from({ length: 150 }, () => ({
       x: Math.random() * 2000 - 1000,
@@ -145,7 +144,7 @@ export const useDNACanvas = ({ onNodeClick, isZoomed, activeNode, originData = [
           const mx2 = (sx + ex) / 2, my2 = baseY + wy - s.scrollY;
           const dx = s.worldMouseX - mx2, dy = s.worldMouseY - my2;
           if (Math.sqrt(dx * dx + dy * dy) < 18) {
-            hit = { type: 'rung', idx: ri, wx: mx2, wy: my2, worldY: wy, angle: a, sx, ex, sy: my2, data: rungs[ri % rungs.length] };
+            hit = { type: 'rung', idx: ri, wx: mx2, wy: my2, worldY: wy, angle: a, sx, ex, sy: my2, data: rungData[ri % rungData.length] };
             break;
           }
         }
@@ -186,7 +185,7 @@ export const useDNACanvas = ({ onNodeClick, isZoomed, activeNode, originData = [
     const NODES_PER_STRAND = 15, RUNGS = 15;
 
     // Drawing helpers
-    const drawHexagon = (x: number, y: number, r: number, rot: number, alpha: number, color: string) => {
+    const drawHexagon = (x: number, y: number, r: number, rot: number, alpha: number, color: string): void => {
       ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.beginPath();
       for (let i = 0; i < 6; i++) {
         const a = (Math.PI / 3) * i;
@@ -196,7 +195,7 @@ export const useDNACanvas = ({ onNodeClick, isZoomed, activeNode, originData = [
       ctx.closePath(); ctx.strokeStyle = `rgba(${color}, ${alpha})`; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
     };
 
-    const drawOrb = (x: number, y: number, r: number, alpha: number, color: string) => {
+    const drawOrb = (x: number, y: number, r: number, alpha: number, color: string): void => {
       ctx.save(); ctx.translate(x, y);
       ctx.beginPath(); ctx.arc(0, 0, r * 0.4, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(${color}, ${alpha * 0.8})`; 
@@ -204,15 +203,15 @@ export const useDNACanvas = ({ onNodeClick, isZoomed, activeNode, originData = [
       ctx.fill(); ctx.restore();
     };
 
-    const drawCross = (x: number, y: number, r: number, rot: number, alpha: number, color: string) => {
+    const drawCross = (x: number, y: number, r: number, rot: number, alpha: number, color: string): void => {
       ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.beginPath();
-      const s = r * 0.5;
-      ctx.moveTo(-s, 0); ctx.lineTo(s, 0);
-      ctx.moveTo(0, -s); ctx.lineTo(0, s);
+      const half = r * 0.5;
+      ctx.moveTo(-half, 0); ctx.lineTo(half, 0);
+      ctx.moveTo(0, -half); ctx.lineTo(0, half);
       ctx.strokeStyle = `rgba(${color}, ${alpha})`; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
     };
 
-    const drawRing = (x: number, y: number, r: number, alpha: number, color: string) => {
+    const drawRing = (x: number, y: number, r: number, alpha: number, color: string): void => {
       ctx.save(); ctx.translate(x, y);
       ctx.beginPath(); ctx.arc(0, 0, r * 0.6, 0, Math.PI * 2);
       ctx.strokeStyle = `rgba(${color}, ${alpha * 0.7})`; ctx.lineWidth = 2;
@@ -220,7 +219,7 @@ export const useDNACanvas = ({ onNodeClick, isZoomed, activeNode, originData = [
       ctx.stroke(); ctx.restore();
     };
 
-    const drawTriangle = (x: number, y: number, r: number, rot: number, alpha: number, color: string) => {
+    const drawTriangle = (x: number, y: number, r: number, rot: number, alpha: number, color: string): void => {
       ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.beginPath();
       ctx.moveTo(0, -r * 0.6);
       ctx.lineTo(r * 0.5, r * 0.4);
@@ -229,7 +228,7 @@ export const useDNACanvas = ({ onNodeClick, isZoomed, activeNode, originData = [
       ctx.strokeStyle = `rgba(${color}, ${alpha * 0.8})`; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
     };
 
-    const buildHelix = (t: number) => {
+    const buildHelix = (_t: number): HelixNode[] => {
       const R = 60;
       const step = helixHeight / (NODES_PER_STRAND + 1);
       const rungStep = helixHeight / (RUNGS + 1);
@@ -242,32 +241,32 @@ export const useDNACanvas = ({ onNodeClick, isZoomed, activeNode, originData = [
         const sx2 = cx + R * Math.cos(angle + Math.PI);
         
         // Safe fallbacks for blank slate
-        const originDatum = originData.length > 0 
+        const originDatum: OriginNodeData = originData.length > 0 
           ? originData[i % originData.length] 
           : { label: 'Locked Skill', skills: [], desc: 'Awaiting curriculum data.' };
           
-        const goalDatum = goalData.length > 0
+        const goalDatum: GoalNodeData = goalData.length > 0
           ? goalData[i % goalData.length]
           : { label: 'Locked Project', project: '', desc: 'Awaiting curriculum data.', status: 'locked', progress: 0 };
 
-        nodes.push({ type: 'origin', idx: i, wx: sx, wy: sy, worldY, angle, data: originDatum as any });
-        nodes.push({ type: 'goal', idx: i, wx: sx2, wy: sy, worldY, angle, data: goalDatum as any });
+        nodes.push({ type: 'origin', idx: i, wx: sx, wy: sy, worldY, angle, data: originDatum });
+        nodes.push({ type: 'goal', idx: i, wx: sx2, wy: sy, worldY, angle, data: goalDatum });
       }
       for (let r = 0; r < RUNGS; r++) {
         const worldY = rungStep * (r + 1);
         const angle = s.rotationY + (worldY / helixHeight) * Math.PI * 4;
         const sx = cx + R * Math.cos(angle), ex = cx + R * Math.cos(angle + Math.PI), sy = baseY + worldY - s.scrollY;
         
-        const rungDatum = rungData.length > 0
+        const rungDatum: RungData = rungData.length > 0
           ? rungData[r % rungData.length]
           : { label: 'Locked Pathway', projects: [] };
 
-        nodes.push({ type: 'rung', idx: r, wx: (sx + ex) / 2, wy: sy, worldY, sx, ex, sy, angle, data: rungDatum as any });
+        nodes.push({ type: 'rung', idx: r, wx: (sx + ex) / 2, wy: sy, worldY, sx, ex, sy, angle, data: rungDatum });
       }
       return nodes;
     };
 
-    const render = () => {
+    const render = (): void => {
       ctx.setTransform(s.dpr, 0, 0, s.dpr, 0, 0);
       ctx.clearRect(0, 0, s.W, s.H);
 
@@ -323,7 +322,7 @@ export const useDNACanvas = ({ onNodeClick, isZoomed, activeNode, originData = [
       const totalWy = endWy - startWy;
       const segments = 600;
 
-      const drawList: { z: number, draw: () => void }[] = [];
+      const drawList: DrawCommand[] = [];
 
       // 1. Generate Strand Segments
       for (let i = 0; i < segments; i++) {
@@ -497,7 +496,7 @@ export const useDNACanvas = ({ onNodeClick, isZoomed, activeNode, originData = [
         }
       }
 
-      let newHovered = null;
+      let newHovered: HelixNode | null = null;
 
       // 3. Generate Nodes
       for (const n of s.nodes) {
