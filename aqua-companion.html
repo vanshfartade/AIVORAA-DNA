@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aqua - AI Companion</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  /* Transparent — sits on top of YOUR platform */
+  body {
+    background: transparent;
+    min-height: 100vh;
+    font-family: 'Segoe UI', sans-serif;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  /* ── COMPANION ── */
+  #companion {
+    position: fixed;
+    width: 64px;
+    height: 80px;
+    cursor: pointer;
+    z-index: 9999;
+    user-select: none;
+    pointer-events: all;
+    bottom: 80px;
+    right: 60px;
+    left: auto; top: auto;
+    filter: drop-shadow(0 8px 24px rgba(0,160,255,0.55)) drop-shadow(0 2px 6px rgba(0,100,200,0.4));
+    transition: filter 0.4s, transform 0.3s;
+  }
+
+  #pokemon-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: transform 0.3s;
+  }
+
+  /* Level badge */
+  #level-badge {
+    position: absolute;
+    top: -20px; left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #0055cc, #00aaff);
+    border-radius: 8px;
+    padding: 2px 7px;
+    color: #e0f4ff;
+    font-size: 9px; font-weight: 700;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0,150,255,0.4);
+  }
+
+  .sparkle {
+    position: absolute; pointer-events: none;
+    width: 5px; height: 5px;
+    background: radial-gradient(circle, #fff 0%, #00d4ff 60%, transparent 100%);
+    border-radius: 50%;
+    animation: sp 2.2s ease-in-out infinite;
+  }
+  @keyframes sp {
+    0%,100% { opacity: 0; transform: scale(0); }
+    50%     { opacity: 1; transform: scale(1); }
+  }
+
+  .bubble {
+    position: absolute; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.7), rgba(0,180,255,0.15));
+    border: 1px solid rgba(255,255,255,0.5);
+    pointer-events: none;
+    animation: bup 1.6s ease-out forwards;
+  }
+  @keyframes bup {
+    0%   { transform: translateY(0)     scale(1);   opacity: 0.9; }
+    100% { transform: translateY(-55px) scale(0.2); opacity: 0; }
+  }
+
+  /* ── SPEECH BUBBLE ── */
+  #speech {
+    position: fixed;
+    background: rgba(255,255,255,0.97);
+    border: 1.5px solid rgba(0,180,255,0.3);
+    border-radius: 14px;
+    padding: 9px 13px;
+    max-width: 200px; min-width: 110px;
+    color: #1a3a55;
+    font-size: 12.5px; line-height: 1.45;
+    z-index: 99999;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+    box-shadow: 0 4px 20px rgba(0,120,255,0.12), 0 1px 4px rgba(0,0,0,0.07);
+    white-space: pre-wrap;
+  }
+  #speech::after {
+    content: '';
+    position: absolute; width: 10px; height: 10px;
+    background: rgba(255,255,255,0.97);
+    border-right: 1.5px solid rgba(0,180,255,0.3);
+    border-bottom: 1.5px solid rgba(0,180,255,0.3);
+    bottom: -6px; right: 20px;
+    transform: rotate(45deg);
+  }
+  #speech.visible { opacity: 1; }
+  #speech em { color: #007bcc; font-style: normal; font-weight: 700; }
+
+  /* ── PROGRESS PANEL ── */
+  #progress-panel {
+    position: fixed;
+    background: rgba(255,255,255,0.98);
+    border: 1.5px solid rgba(0,180,255,0.22);
+    border-radius: 18px;
+    padding: 18px;
+    width: 265px;
+    z-index: 99998;
+    opacity: 0; pointer-events: none;
+    transform: translateY(16px) scale(0.96);
+    transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: 0 8px 40px rgba(0,100,200,0.1), 0 2px 8px rgba(0,0,0,0.05);
+  }
+  #progress-panel.open {
+    opacity: 1; pointer-events: all;
+    transform: translateY(0) scale(1);
+  }
+  .panel-title {
+    color: #007bcc; font-size: 14px; font-weight: 700;
+    margin-bottom: 14px; text-align: center;
+  }
+  .skill-row { margin-bottom: 10px; }
+  .skill-label {
+    display: flex; justify-content: space-between;
+    color: #334455; font-size: 11.5px; margin-bottom: 3px;
+  }
+  .skill-bar-bg {
+    height: 7px; background: rgba(0,100,200,0.08);
+    border-radius: 4px; overflow: hidden;
+  }
+  .skill-bar-fill {
+    height: 100%; border-radius: 4px;
+    background: linear-gradient(90deg, #00aaff, #00e5cc);
+    transition: width 1s cubic-bezier(0.34,1.56,0.64,1);
+    width: 0%;
+  }
+  .xp-badge {
+    display: block;
+    background: rgba(0,180,255,0.07);
+    border: 1px solid rgba(0,180,255,0.22);
+    border-radius: 16px; padding: 5px 10px;
+    color: #0077bb; font-size: 11px;
+    margin-top: 10px; text-align: center;
+  }
+  .streak-row { display: flex; justify-content: space-around; margin-top: 12px; }
+  .streak-item { text-align: center; }
+  .streak-num { color: #00aacc; font-size: 20px; font-weight: 700; line-height: 1; }
+  .streak-lbl { color: #99aabb; font-size: 10px; margin-top: 2px; }
+  .close-btn {
+    position: absolute; top: 10px; right: 12px;
+    color: #aabbcc; cursor: pointer; font-size: 14px;
+    background: none; border: none; pointer-events: all;
+    transition: color 0.2s;
+  }
+  .close-btn:hover { color: #0077cc; }
+
+  /* ── CONFETTI ── */
+  #celebrate-layer { position: fixed; inset: 0; pointer-events: none; z-index: 99997; }
+  .confetti-piece {
+    position: absolute; width: 7px; height: 7px; border-radius: 2px;
+    animation: cffall linear forwards;
+  }
+  @keyframes cffall {
+    0%   { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+
+  /* ── RAGE ── */
+  #companion.rage {
+    filter: drop-shadow(0 8px 24px rgba(255,60,0,0.7)) drop-shadow(0 2px 6px rgba(200,0,0,0.5)) !important;
+  }
+
+  /* ── HINT BTN ── */
+  #hint-btn {
+    position: fixed;
+    background: rgba(255,255,255,0.95);
+    border: 1.5px solid rgba(0,180,255,0.38);
+    border-radius: 16px; padding: 5px 12px;
+    color: #0088cc; font-size: 11.5px;
+    cursor: pointer; z-index: 9990;
+    pointer-events: all;
+    transition: all 0.2s; display: none;
+    box-shadow: 0 2px 10px rgba(0,120,255,0.1);
+  }
+  #hint-btn:hover { background: #e8f6ff; }
+
+  /* ── ANNOY BTN ── */
+  #annoy-btn {
+    position: fixed;
+    background: rgba(255,255,255,0.85);
+    border: 1px dashed rgba(255,100,0,0.4);
+    border-radius: 16px; padding: 4px 10px;
+    color: rgba(210,90,20,0.8); font-size: 10.5px;
+    cursor: pointer; z-index: 9990;
+    pointer-events: all;
+    transition: all 0.2s; opacity: 0.65;
+  }
+  #annoy-btn:hover { opacity: 1; }
+
+  /* ── DEMO BAR ── */
+  #demo-bar {
+    position: fixed; bottom: 16px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 8px; z-index: 9990;
+    pointer-events: all;
+  }
+  #demo-bar button {
+    padding: 7px 14px; border-radius: 16px;
+    cursor: pointer; font-size: 11.5px; border: 1.5px solid;
+    background: rgba(255,255,255,0.92);
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  }
+  #demo-bar button:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,0,0,0.1); }
+
+  .droplet-ripple {
+    position: absolute; border-radius: 50%;
+    background: rgba(0,200,255,0.35);
+    animation: drip-out 0.7s ease-out forwards;
+    pointer-events: none;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%) scale(0);
+  }
+  @keyframes drip-out {
+    to { transform: translate(-50%,-50%) scale(4); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div id="celebrate-layer"></div>
+<div id="speech"></div>
+<div id="hint-btn">💡 Hint?</div>
+<div id="annoy-btn">😈 Annoy</div>
+
+<!-- ── COMPANION ── -->
+<div id="companion">
+  <div id="level-badge">LVL 3 🌊</div>
+
+  <img id="pokemon-img" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/7.gif" alt="Pokemon" />
+
+  <div class="sparkle" style="top:-6px;left:8px;animation-delay:0s;"></div>
+  <div class="sparkle" style="top:10px;left:-8px;animation-delay:0.85s;"></div>
+  <div class="sparkle" style="top:-4px;right:3px;animation-delay:1.7s;"></div>
+</div>
+
+<!-- ── PROGRESS PANEL ── -->
+<div id="progress-panel">
+  <button class="close-btn" id="close-panel">✕</button>
+  <div class="panel-title">✦ Your Progress ✦</div>
+
+  <div class="skill-row">
+    <div class="skill-label"><span>🤖 AI Fundamentals</span><span>78%</span></div>
+    <div class="skill-bar-bg"><div class="skill-bar-fill" data-w="78%"></div></div>
+  </div>
+  <div class="skill-row">
+    <div class="skill-label"><span>🧠 Machine Learning</span><span>55%</span></div>
+    <div class="skill-bar-bg"><div class="skill-bar-fill" data-w="55%"></div></div>
+  </div>
+  <div class="skill-row">
+    <div class="skill-label"><span>💬 Prompt Engineering</span><span>91%</span></div>
+    <div class="skill-bar-bg"><div class="skill-bar-fill" data-w="91%"></div></div>
+  </div>
+  <div class="skill-row">
+    <div class="skill-label"><span>📊 Data Science</span><span>34%</span></div>
+    <div class="skill-bar-bg"><div class="skill-bar-fill" data-w="34%"></div></div>
+  </div>
+  <div class="skill-row">
+    <div class="skill-label"><span>🔮 Neural Networks</span><span>62%</span></div>
+    <div class="skill-bar-bg"><div class="skill-bar-fill" data-w="62%"></div></div>
+  </div>
+
+  <span class="xp-badge">⚡ 2,840 XP — Rank: AI Apprentice</span>
+  <div class="streak-row">
+    <div class="streak-item">
+      <div class="streak-num">12</div>
+      <div class="streak-lbl">Day Streak 🔥</div>
+    </div>
+    <div class="streak-item">
+      <div class="streak-num">8</div>
+      <div class="streak-lbl">Completed 📚</div>
+    </div>
+    <div class="streak-item">
+      <div class="streak-num">3</div>
+      <div class="streak-lbl">Badges 🏅</div>
+    </div>
+  </div>
+</div>
+
+<!-- Remove in production -->
+<div id="demo-bar">
+  <button onclick="simulateTask()"    style="color:#00aa66;border-color:rgba(0,180,100,0.35);">✅ Complete Task</button>
+  <button onclick="simulateStuck()"   style="color:#cc9900;border-color:rgba(220,170,0,0.35);">🤔 I'm Stuck</button>
+  <button onclick="simulateLevelUp()" style="color:#0077cc;border-color:rgba(0,150,255,0.35);">⬆️ Level Up!</button>
+</div>
+
+<script>
+/* ════════════════════════════════
+   AQUA — Water Droplet Companion
+   ════════════════════════════════ */
+
+const comp     = document.getElementById('companion');
+const speech   = document.getElementById('speech');
+const panel    = document.getElementById('progress-panel');
+const hintBtn  = document.getElementById('hint-btn');
+const annoyBtn = document.getElementById('annoy-btn');
+const pokeImg  = document.getElementById('pokemon-img');
+
+const S = {
+  x: window.innerWidth  - 110,
+  y: window.innerHeight - 160,
+  tx: window.innerWidth  - 110,
+  ty: window.innerHeight - 160,
+  hover: false, panelOpen: false,
+  rage: 0, isRaging: false,
+  level: 3, stimer: null,
+};
+
+const M = {
+  idle: [
+    "yo bro, still grinding? 💧",
+    "bro don't ghost the lessons fr 😤",
+    "lowkey proud of u ngl ✨",
+    "no cap, u been slaying today 🔥",
+    "bro check ur modules!! 👀",
+    "main character energy rn fr fr 💯",
+    "hey don't forget ur streak!! 🔥",
+    "u got this fam, no cap 🌊",
+    "giving AI scholar vibes 🧠✨",
+    "drip different. learn different. 💧",
+  ],
+  rage:      ["BRUH STOOOOP 😤💢","OMG WHY ARE U LIKE THIS 😭","I AM LITERALLY SHAKING 💧💢","FINE!! I SEE HOW IT IS 😤","bro u pressed ALL my buttons 😡","NOT FUNNY I'M CRYING 💀","IM SO DONE WITH U RN 😤"],
+  annoy:     ["hey!! quit it 😤","bro... BROOO 😭","ok that's not funny 😠","ur testing me rn 💀"],
+  hint:      ["psst... break it into smaller steps! 🧩","ngl the docs might help here 📖","hint: it's simpler than u think 💡","try from scratch maybe? 🌟","just experiment!! that's the vibe 🧪","sleeping on it actually works lol 💤"],
+  celebrate: ["YOOO LETS GOOOOO!! 🎉💧","SLAY!! absolutely sending it!! 🔥✨","no cap that was FIRE bro 💯🎊","W MOMENT!! W MOMENT!! 🏆💧","ur literally built different omg!! 🧠✨","GOATED behavior right here fr 🐐🎉"],
+  levelUp:   ["BRO LEVELED UP?? INSANE!! 🚀","NEW LEVEL WHO DIS?? 😤💧🔥","ur glow up is giving EVERYTHING ✨"],
+};
+
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const W = () => window.innerWidth;
+const H = () => window.innerHeight;
+
+function applyPos() {
+  comp.style.left = S.x + 'px'; comp.style.top = S.y + 'px';
+  comp.style.right = 'auto'; comp.style.bottom = 'auto';
+}
+
+function layout() {
+  speech.style.left = Math.max(8, Math.min(W()-215, S.x-50)) + 'px';
+  speech.style.top  = Math.max(8, S.y-100) + 'px';
+  hintBtn.style.left  = Math.max(8, S.x-125) + 'px';
+  hintBtn.style.top   = (S.y+30) + 'px';
+  annoyBtn.style.left = (S.x+70) + 'px';
+  annoyBtn.style.top  = (S.y+8) + 'px';
+  if (S.panelOpen) {
+    panel.style.left = Math.max(8, Math.min(W()-280, S.x-100)) + 'px';
+    panel.style.top  = Math.max(8, S.y-330) + 'px';
+  }
+}
+
+function newTarget() {
+  if (S.isRaging) {
+    const m=110;
+    S.tx = m + Math.random()*(W()-m*2-70);
+    S.ty = m + Math.random()*(H()-m*2-90);
+  } else {
+    const baseX = W() - 110;
+    const baseY = H() - 160;
+    S.tx = baseX + (Math.random() - 0.5) * 50;
+    S.ty = baseY + (Math.random() - 0.5) * 30;
+  }
+}
+
+(function loop() {
+  if (!S.hover) {
+    const dx=S.tx-S.x, dy=S.ty-S.y, d=Math.hypot(dx,dy);
+    if (d < 5) {
+      setTimeout(()=>{ if(!S.hover) newTarget(); }, 1800+Math.random()*4000);
+    } else {
+      const spd=Math.min(d*0.022, 2.5);
+      S.x+=(dx/d)*spd; S.y+=(dy/d)*spd;
+      applyPos(); layout();
+    }
+  }
+  requestAnimationFrame(loop);
+})();
+
+// Eye tracking removed for sprite animation
+
+function say(msg, ms=3500) {
+  clearTimeout(S.stimer);
+  speech.innerHTML=msg; speech.classList.add('visible'); layout();
+  S.stimer=setTimeout(()=>speech.classList.remove('visible'), ms);
+}
+
+function spawnBubbles(n) {
+  for(let i=0;i<n;i++) setTimeout(()=>{
+    const b=document.createElement('div'); b.className='bubble';
+    const s=4+Math.random()*8;
+    b.style.cssText=`width:${s}px;height:${s}px;left:${14+Math.random()*36}px;top:${24+Math.random()*28}px;animation-duration:${0.9+Math.random()*0.8}s;`;
+    comp.appendChild(b); setTimeout(()=>b.remove(),2000);
+  }, i*180);
+}
+
+function celebrate() {
+  const layer=document.getElementById('celebrate-layer');
+  const colors=['#00d4ff','#00ffcc','#ff55aa','#ffdd00','#ff4455','#55ffaa'];
+  for(let i=0;i<65;i++) setTimeout(()=>{
+    const c=document.createElement('div'); c.className='confetti-piece';
+    c.style.cssText=`left:${Math.random()*100}%;top:-8px;background:${pick(colors)};animation-duration:${1.4+Math.random()*2}s;animation-delay:${Math.random()*0.4}s;border-radius:${Math.random()>.5?'50%':'2px'};`;
+    layer.appendChild(c); setTimeout(()=>c.remove(),3600);
+  }, i*22);
+}
+
+// Click companion
+comp.addEventListener('click', e => {
+  e.stopPropagation();
+  const r=document.createElement('div'); r.className='droplet-ripple';
+  r.style.cssText='width:70px;height:70px;';
+  comp.appendChild(r); setTimeout(()=>r.remove(),700);
+  spawnBubbles(3);
+
+  if(S.panelOpen) {
+    panel.classList.remove('open'); S.panelOpen=false; say(pick(M.idle));
+  } else {
+    panel.classList.add('open'); S.panelOpen=true; layout();
+    setTimeout(()=>document.querySelectorAll('.skill-bar-fill').forEach(b=>b.style.width=b.dataset.w), 120);
+    say("check ur progress bro!! 👀✨");
+  }
+});
+
+document.getElementById('close-panel').onclick=()=>{ panel.classList.remove('open'); S.panelOpen=false; };
+
+comp.addEventListener('mouseenter',()=>S.hover=true);
+comp.addEventListener('mouseleave',()=>{ S.hover=false; newTarget(); });
+
+// Annoy
+annoyBtn.addEventListener('click', e => {
+  e.stopPropagation(); S.rage++;
+  if(S.rage>=4 && !S.isRaging) {
+    S.isRaging=true; comp.classList.add('rage');
+    pokeImg.style.filter = 'drop-shadow(0 0 10px red)';
+
+    say(pick(M.rage),4200);
+    let n=0; const si=setInterval(()=>{ newTarget();
+      if(++n>7){ clearInterval(si); setTimeout(()=>{
+        comp.classList.remove('rage');
+        pokeImg.style.filter = '';
+        S.isRaging=false; S.rage=0;
+        say("ok... im calm. im water. im FLOW. 🌊😤",4500);
+      },2500); }
+    },700);
+  } else if(!S.isRaging) {
+    say(M.annoy[Math.min(S.rage-1,3)]);
+    comp.style.transform='scaleX(1.3) scaleY(0.72)';
+
+    setTimeout(()=>{
+      comp.style.transform='';
+    },800);
+  }
+});
+
+hintBtn.addEventListener('click',()=>say(pick(M.hint),5500));
+
+// ── PUBLIC API — wire to your platform ──
+window.simulateTask = ()=>{
+  celebrate(); say(pick(M.celebrate),5000);
+  let n=0; const bi=setInterval(()=>{
+    comp.style.transform= n%2===0 ? 'scaleX(1.12) scaleY(0.88) translateY(-9px)' : 'scaleX(0.92) scaleY(1.1) translateY(4px)';
+    if(++n>6){ clearInterval(bi); comp.style.transform=''; }
+  },140);
+};
+
+window.simulateStuck = ()=>{
+  hintBtn.style.display='block'; layout();
+  say("omg r u stuck?? i gotchu bro!! 💧💡\n\n"+pick(M.hint),6000);
+};
+
+window.simulateLevelUp = ()=>{
+  S.level++; document.getElementById('level-badge').textContent=`LVL ${S.level} 🌊`;
+  celebrate(); 
+  
+  let newName = "Squirtle";
+  let spriteUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/7.gif";
+  
+  if (S.level >= 15) {
+    newName = "Blastoise";
+    spriteUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/9.gif";
+  } else if (S.level >= 5) {
+    newName = "Wartortle";
+    spriteUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/8.gif";
+  }
+  
+  let currentSprite = pokeImg.getAttribute('src');
+  if (currentSprite !== spriteUrl) {
+    pokeImg.setAttribute('src', spriteUrl);
+    say(`BRO I EVOLVED INTO ${newName.toUpperCase()}!! 🌊🐢🔥`, 5000);
+  } else {
+    say(pick(M.levelUp),5000);
+  }
+  
+  comp.style.filter='drop-shadow(0 0 22px #00d4ff) drop-shadow(0 0 44px #0088ff) brightness(1.45)';
+  setTimeout(()=>comp.style.filter='',1300);
+};
+
+// Idle chatter
+setInterval(()=>{ if(!S.panelOpen&&!S.isRaging&&Math.random()>.38) say(pick(M.idle)); },13000);
+
+// Show hint after 30s idle
+setTimeout(()=>{ hintBtn.style.display='block'; layout(); },30000);
+
+// Init
+applyPos(); layout(); newTarget();
+setTimeout(()=>say("heyy!! i'm <em>Squirtle</em> ur AI bro 💧\ntap me to see ur progress!",5500),1400);
+
+/*
+  ══════════════════════════════════════════
+  CONNECT TO YOUR PLATFORM — QUICK GUIDE
+  ══════════════════════════════════════════
+
+  On lesson complete:
+    simulateTask();
+
+  When user is idle > 3 minutes:
+    simulateStuck();
+
+  On XP level up:
+    simulateLevelUp();
+
+  Update skill bars dynamically:
+    const bars = document.querySelectorAll('.skill-bar-fill');
+    bars[0].dataset.w = `${aiFoundationsPercent}%`;
+    bars[1].dataset.w = `${mlPercent}%`;
+    // etc...
+
+  Update XP text:
+    document.querySelector('.xp-badge').textContent = `⚡ ${xp} XP — Rank: ${rank}`;
+
+  Update streak numbers:
+    document.querySelectorAll('.streak-num')[0].textContent = streakDays;
+
+  Remove #demo-bar div before going live.
+  ══════════════════════════════════════════
+*/
+</script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+// ============================================
+// AIVORAA DNA Dashboard — Prisma Schema
+// ============================================
+// This schema defines the relational data model
+// for the 3D DNA educational dashboard.
+//
+// Relationships:
+//   DNAAnalysis → has many OriginNodes, GoalNodes, RungNodes
+//   OriginNode  → has many Skills
+//   GoalNode    → has many Projects
+//   RungNode    → has many Projects
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Status Enum ──────────────────────────────
+// Maps to frontend values: locked | in-progress | completed
+enum ProgressStatus {
+  LOCKED
+  IN_PROGRESS
+  COMPLETED
+}
+
+// ── DNAAnalysis ──────────────────────────────
+// Top-level container for a user's entire DNA helix.
+// Each user has one DNAAnalysis record.
+model DNAAnalysis {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  originNodes OriginNode[]
+  goalNodes   GoalNode[]
+  rungNodes   RungNode[]
+
+  @@index([userId])
+}
+
+// ── OriginNode ───────────────────────────────
+// Represents a skill cluster on Strand A of the helix.
+// Example: "Web Dev", "Python", "ML Basics"
+model OriginNode {
+  id        String   @id @default(uuid())
+  label     String
+  desc      String
+  sortOrder Int      @default(0)
+
+  dnaAnalysisId String
+  dnaAnalysis   DNAAnalysis @relation(fields: [dnaAnalysisId], references: [id], onDelete: Cascade)
+
+  skills Skill[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dnaAnalysisId])
+}
+
+// ── Skill ────────────────────────────────────
+// Individual skill within an OriginNode.
+// Example: "HTML/CSS", "React Component Architecture"
+model Skill {
+  id       String         @id @default(uuid())
+  title    String
+  desc     String
+  status   ProgressStatus @default(LOCKED)
+  progress Int            @default(0)
+  sortOrder Int           @default(0)
+
+  originNodeId String
+  originNode   OriginNode @relation(fields: [originNodeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([originNodeId])
+}
+
+// ── GoalNode ─────────────────────────────────
+// Represents a career goal on Strand B of the helix.
+// Example: "Full Stack", "AI Engineer"
+model GoalNode {
+  id       String         @id @default(uuid())
+  label    String
+  desc     String
+  status   ProgressStatus @default(LOCKED)
+  progress Int            @default(0)
+  sortOrder Int           @default(0)
+
+  dnaAnalysisId String
+  dnaAnalysis   DNAAnalysis @relation(fields: [dnaAnalysisId], references: [id], onDelete: Cascade)
+
+  projects Project[] @relation("GoalProjects")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dnaAnalysisId])
+}
+
+// ── RungNode ─────────────────────────────────
+// Represents a learning pathway bridging Skills ↔ Goals.
+// Example: "Full Stack Skills", "AI Engineer Skills"
+model RungNode {
+  id        String @id @default(uuid())
+  label     String
+  sortOrder Int    @default(0)
+
+  dnaAnalysisId String
+  dnaAnalysis   DNAAnalysis @relation(fields: [dnaAnalysisId], references: [id], onDelete: Cascade)
+
+  projects Project[] @relation("RungProjects")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dnaAnalysisId])
+}
+
+// ── Project ──────────────────────────────────
+// A course/task item belonging to a GoalNode or RungNode.
+// Example: "HTML Basics", "Deep Learning"
+model Project {
+  id       String         @id @default(uuid())
+  title    String
+  desc     String
+  status   ProgressStatus @default(LOCKED)
+  progress Int            @default(0)
+  sortOrder Int           @default(0)
+
+  goalNodeId String?
+  goalNode   GoalNode? @relation("GoalProjects", fields: [goalNodeId], references: [id], onDelete: Cascade)
+
+  rungNodeId String?
+  rungNode   RungNode? @relation("RungProjects", fields: [rungNodeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([goalNodeId])
+  @@index([rungNodeId])
+}
